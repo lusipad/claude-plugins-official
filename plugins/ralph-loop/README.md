@@ -24,7 +24,42 @@ This plugin implements Ralph using a **Stop hook** that intercepts Claude's exit
 # 5. Repeat until completion
 ```
 
-The loop happens **inside your current session** - you don't need external bash loops. The Stop hook in `hooks/stop-hook.sh` creates the self-referential feedback loop by blocking normal session exit.
+The loop happens **inside your current session** - you don't need external bash loops. The Stop hook creates the self-referential feedback loop by blocking normal session exit.
+
+## Platform Support
+
+Ralph Loop supports **cross-platform** operation:
+
+| Platform | Shell | Status |
+|----------|-------|--------|
+| Linux | Bash | Fully supported |
+| macOS | Bash/Zsh | Fully supported |
+| Windows | PowerShell (pwsh) | Fully supported |
+| Windows | PowerShell 5.1 | Fully supported |
+| Windows | Git Bash/MSYS2 | Fully supported |
+| Windows | CMD | Via PowerShell |
+
+The plugin automatically detects your operating system and uses the appropriate shell scripts:
+- **Unix/Linux/macOS**: Uses `stop-hook.sh` and `setup-ralph-loop.sh` (Bash)
+- **Windows**: Uses `stop-hook.ps1` and `setup-ralph-loop.ps1` (PowerShell)
+
+### Windows Requirements
+
+- PowerShell 5.1+ (included with Windows 10/11) or PowerShell Core (pwsh) 7+
+- **Bash available in PATH** (via Git Bash, WSL, or MSYS2)
+
+**Why Bash is needed on Windows:**
+
+The plugin uses cross-platform wrapper scripts as entry points. These wrappers:
+1. Detect the operating system
+2. Automatically invoke the appropriate script (PowerShell on Windows, Bash on Unix)
+
+While the actual work is done by PowerShell scripts on Windows, the initial wrapper invocation requires Bash. This is typically available if you have:
+- **Git for Windows** (recommended) - includes Git Bash
+- **WSL** (Windows Subsystem for Linux)
+- **MSYS2** or **Cygwin**
+
+If you're using Claude Code on Windows, Git Bash is usually already available since Git is commonly installed for development work.
 
 This creates a **self-referential feedback loop** where:
 - The prompt never changes between iterations

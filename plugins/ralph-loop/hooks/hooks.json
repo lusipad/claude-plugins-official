@@ -1,12 +1,12 @@
 {
-  "description": "Ralph Loop plugin stop hook for self-referential loops",
+  "description": "Ralph Loop plugin stop hook for self-referential loops. Cross-platform: bash wrapper auto-detects OS and invokes PowerShell on Windows. Requires bash in PATH (Git Bash on Windows).",
   "hooks": {
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook-wrapper.sh"
           }
         ]
       }
