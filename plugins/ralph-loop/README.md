@@ -46,7 +46,20 @@ The plugin automatically detects your operating system and uses the appropriate 
 ### Windows Requirements
 
 - PowerShell 5.1+ (included with Windows 10/11) or PowerShell Core (pwsh) 7+
-- No additional dependencies required
+- **Bash available in PATH** (via Git Bash, WSL, or MSYS2)
+
+**Why Bash is needed on Windows:**
+
+The plugin uses cross-platform wrapper scripts as entry points. These wrappers:
+1. Detect the operating system
+2. Automatically invoke the appropriate script (PowerShell on Windows, Bash on Unix)
+
+While the actual work is done by PowerShell scripts on Windows, the initial wrapper invocation requires Bash. This is typically available if you have:
+- **Git for Windows** (recommended) - includes Git Bash
+- **WSL** (Windows Subsystem for Linux)
+- **MSYS2** or **Cygwin**
+
+If you're using Claude Code on Windows, Git Bash is usually already available since Git is commonly installed for development work.
 
 This creates a **self-referential feedback loop** where:
 - The prompt never changes between iterations

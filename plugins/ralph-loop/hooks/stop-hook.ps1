@@ -17,11 +17,11 @@ if (-not (Test-Path $ralphStateFile)) {
     exit 0
 }
 
-# Read state file content
-$stateContent = Get-Content $ralphStateFile -Raw
+# Read state file content and normalize line endings to LF
+$stateContent = (Get-Content $ralphStateFile -Raw) -replace "`r`n", "`n"
 
 # Parse markdown frontmatter (YAML between ---)
-$frontmatterMatch = [regex]::Match($stateContent, '(?s)^---\r?\n(.*?)\r?\n---')
+$frontmatterMatch = [regex]::Match($stateContent, '(?s)^---\n(.*?)\n---')
 if (-not $frontmatterMatch.Success) {
     Write-Error "Ralph loop: State file corrupted - no valid frontmatter"
     Remove-Item $ralphStateFile -Force
@@ -30,10 +30,10 @@ if (-not $frontmatterMatch.Success) {
 
 $frontmatter = $frontmatterMatch.Groups[1].Value
 
-# Extract values from frontmatter
-$iterationMatch = [regex]::Match($frontmatter, 'iteration:\s*(\d+)')
-$maxIterationsMatch = [regex]::Match($frontmatter, 'max_iterations:\s*(\d+)')
-$completionPromiseMatch = [regex]::Match($frontmatter, 'completion_promise:\s*"?([^"\r\n]+)"?')
+# Extract values from frontmatter using multiline anchors to target only frontmatter lines
+$iterationMatch = [regex]::Match($frontmatter, '(?m)^iteration:\s*(\d+)')
+$maxIterationsMatch = [regex]::Match($frontmatter, '(?m)^max_iterations:\s*(\d+)')
+$completionPromiseMatch = [regex]::Match($frontmatter, '(?m)^completion_promise:\s*"?([^"\r\n]+)"?')
 
 if (-not $iterationMatch.Success) {
     Write-Host "Warning: Ralph loop: State file corrupted" -ForegroundColor Yellow
@@ -59,7 +59,7 @@ if (-not $maxIterationsMatch.Success) {
 
 $iteration = [int]$iterationMatch.Groups[1].Value
 $maxIterations = [int]$maxIterationsMatch.Groups[1].Value
-$completionPromise = if ($completionPromiseMatch.Success -and $completionPromiseMatch.Groups[1].Value -ne "null") {
+$completionPromise = if ($completionPromiseMatch.Success -and $completionPromiseMatch.Groups[1].Value -cne "null") {
     $completionPromiseMatch.Groups[1].Value
 } else {
     $null
@@ -72,12 +72,23 @@ if ($maxIterations -gt 0 -and $iteration -ge $maxIterations) {
     exit 0
 }
 
-# Get transcript path from hook input
+# Get transcript path from hook input with proper validation
 try {
     $hookData = $hookInput | ConvertFrom-Json
+
+    # Validate JSON structure
+    if (-not $hookData.PSObject.Properties['transcript_path']) {
+        throw "Missing 'transcript_path' property in hook input"
+    }
+
     $transcriptPath = $hookData.transcript_path
+
+    if (-not ($transcriptPath -is [string]) -or [string]::IsNullOrWhiteSpace($transcriptPath)) {
+        throw "Invalid 'transcript_path' value: expected non-empty string"
+    }
 } catch {
     Write-Host "Warning: Ralph loop: Failed to parse hook input" -ForegroundColor Yellow
+    Write-Host "   Error: $_" -ForegroundColor Yellow
     Remove-Item $ralphStateFile -Force
     exit 0
 }
@@ -114,7 +125,7 @@ if (-not $lastAssistantLine) {
 # Parse JSON and extract text content
 try {
     $messageData = $lastAssistantLine | ConvertFrom-Json
-    $textContents = $messageData.message.content | Where-Object { $_.type -eq "text" } | ForEach-Object { $_.text }
+    $textContents = $messageData.message.content | Where-Object { $_.type -ceq "text" } | ForEach-Object { $_.text }
     $lastOutput = $textContents -join "`n"
 } catch {
     Write-Host "Warning: Ralph loop: Failed to parse assistant message JSON" -ForegroundColor Yellow
@@ -141,7 +152,8 @@ if ($completionPromise) {
         # Normalize whitespace
         $promiseText = $promiseText -replace '\s+', ' '
 
-        if ($promiseText -eq $completionPromise) {
+        # Use case-sensitive comparison (-ceq) to match bash behavior
+        if ($promiseText -ceq $completionPromise) {
             Write-Host "Ralph loop: Detected <promise>$completionPromise</promise>" -ForegroundColor Green
             Remove-Item $ralphStateFile -Force
             exit 0
@@ -153,7 +165,8 @@ if ($completionPromise) {
 $nextIteration = $iteration + 1
 
 # Extract prompt (everything after the closing ---)
-$promptMatch = [regex]::Match($stateContent, '(?s)^---\r?\n.*?\r?\n---\r?\n(.*)$')
+# Don't use TrimStart() to maintain consistency with bash behavior
+$promptMatch = [regex]::Match($stateContent, '(?s)^---\n.*?\n---\n(.*)$')
 if (-not $promptMatch.Success -or [string]::IsNullOrWhiteSpace($promptMatch.Groups[1].Value)) {
     Write-Host "Warning: Ralph loop: State file corrupted or incomplete" -ForegroundColor Yellow
     Write-Host "   File: $ralphStateFile" -ForegroundColor Yellow
@@ -168,11 +181,14 @@ if (-not $promptMatch.Success -or [string]::IsNullOrWhiteSpace($promptMatch.Grou
     exit 0
 }
 
-$promptText = $promptMatch.Groups[1].Value.TrimStart()
+# Keep prompt text as-is without trimming (matches bash awk behavior)
+$promptText = $promptMatch.Groups[1].Value
 
-# Update iteration in state file
-$updatedContent = $stateContent -replace 'iteration:\s*\d+', "iteration: $nextIteration"
+# Update iteration in state file using multiline anchor
+$updatedContent = $stateContent -replace '(?m)^iteration:\s*\d+', "iteration: $nextIteration"
+# Write with trailing newline to match bash behavior
 Set-Content -Path $ralphStateFile -Value $updatedContent -NoNewline
+Add-Content -Path $ralphStateFile -Value ""
 
 # Build system message with iteration count and completion promise info
 if ($completionPromise) {

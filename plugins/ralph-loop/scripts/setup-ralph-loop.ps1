@@ -158,7 +158,9 @@ started_at: "$timestamp"
 $prompt
 "@
 
+# Write state file with exactly one trailing newline to match bash behavior
 Set-Content -Path ".claude/ralph-loop.local.md" -Value $stateContent -NoNewline
+Add-Content -Path ".claude/ralph-loop.local.md" -Value ""
 
 # Output setup message
 $maxIterationsDisplay = if ($maxIterations -gt 0) { $maxIterations } else { "unlimited" }

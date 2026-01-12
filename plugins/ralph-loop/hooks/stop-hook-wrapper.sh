@@ -2,6 +2,19 @@
 
 # Ralph Loop Stop Hook - Cross-Platform Wrapper
 # Detects OS and runs the appropriate script (bash or PowerShell)
+#
+# SECURITY NOTE: On Windows, this script uses -ExecutionPolicy Bypass to run
+# PowerShell scripts. This is necessary because:
+# 1. The script is part of a trusted Claude Code plugin installed by the user
+# 2. PowerShell's default execution policy may block unsigned scripts
+# 3. The bypass only applies to this specific script invocation
+#
+# The PowerShell scripts (stop-hook.ps1) only perform these safe operations:
+# - Read/write to .claude/ralph-loop.local.md state file
+# - Read transcript files provided by Claude Code
+# - Output JSON to stdout
+
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
