@@ -556,6 +556,16 @@
         "url": "https://github.com/huggingface/skills.git"
       },
       "homepage": "https://github.com/huggingface/skills.git"
+    },
+    {
+      "name": "circleback",
+      "description": "Circleback conversational context integration. Search and access meetings, emails, calendar events, and more.",
+      "category": "productivity",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/circlebackai/claude-code-plugin.git"
+      },
+      "homepage": "https://github.com/circlebackai/claude-code-plugin.git"
     }
   ]
 }
